@@ -1,0 +1,160 @@
+<html>
+
+<head>e-book</head>
+<style>
+    mark {
+        background-color: transparent;
+        cursor: hand;
+    }
+    
+    mark:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<body>
+    <section>
+        <article id="article" contenteditable="true">
+            I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation. Five score years ago, a great American, in whose symbolic shadow we stand today, signed the Emancipation Proclamation. This momentous decree came as a great beacon light of hope to millions of Negro slaves who had been seared in the flames of withering injustice. It came as a joyous daybreak to end the long night of their captivity. But one hundred years later, the Negro still is not free. One hundred years later, the life of the Negro is still sadly crippled by the manacles of segregation and the chains of discrimination. One hundred years later, the Negro lives on a lonely island of poverty in the midst of a vast ocean of material prosperity. One hundred years later, the Negro is still languished in the corners of American society and finds himself an exile in his own land. And so we've come here today to dramatize a shameful condition.
+        </article>
+    </section>
+    <section>
+        <select id="voices">
+
+        </select>
+        <button onclick="player.play()">
+            play
+        </button>
+        <button onclick="player.stop()">
+            stop
+        </button>
+    </section>
+</body>
+<script type="application/javascript">
+    function getVoice() {
+        window.speechSynthesis.onvoiceschanged = function () {
+            for (var i = 0; i < window.speechSynthesis.getVoices().length; ++i) {
+                var voice = window.speechSynthesis.getVoices()[i];
+                setVoices(voice);
+            }
+        };
+
+        function setVoices(voice) {
+            var voices = document.getElementById("voices");
+            var option = document.createElement("option");
+            option.textContent = voice.name;
+            option.value = voice.name;
+            voices.appendChild(option);
+        }
+    }
+
+    function setSpan(article) {
+        //        var texts=article.innerText.split(/\s+/);    
+        var references = article.innerText.split(/[-!$%^&*()_+|~=`{}\[\]:";'<>?,.\/]/);
+        references = references.filter(function (elem, pos) {
+            return references.indexOf(elem) == pos;
+        });
+        var texts = article.innerText;
+        references.forEach(function (reference) {
+            //        var texts=article.innerText.replace(/[-!$%^&*()_+|~=`{}\[\]:";'<>?,.\/]/ig, function(str) {return '<mark>'+str+'</mark>'});    
+            texts = texts.replace((new RegExp(reference, 'ig')), function (str) {
+                if (str.length > 0) {
+                    return '<mark>' + str + '</mark>'
+                } else {
+                    return str;
+                }
+
+            });
+        })
+
+        article.innerHTML = texts;
+        var marks = article.querySelectorAll("mark");
+
+        for (var i = 0; i < marks.length; ++i) {
+            var mark = marks[i];
+            mark.id = i;
+            if (marks[i].parentElement.nodeName != "MARK") {
+                mark.onclick = function () {
+                    console.log(speechSynthesis);
+                    player.stop(false);
+                    player.play(this.id);
+                }
+            }
+        }
+    }
+
+
+    function Player() {
+        this.text;
+        var cancel = false;
+        this.play = function (index) {
+            var article = document.getElementById("article");
+            if (index == undefined) {
+                index = 0;
+            }
+            play(article, index);
+        };
+        this.stop = function (flag) {
+            speechSynthesis.cancel();
+            if (typeof flag == "undefined") {
+                cancel = true
+            } else {
+                cancel=flag;
+            }
+
+        };
+        this.setStartPoint;
+
+        function play(article, index) {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            getVoice(function (voice) {
+                //                var s = p.split(/[-!$%^&*()_+|~=`{}\[\]:";'<>?,.\/]/);
+                var marks = article.querySelectorAll("mark");
+                //                var s = p.split(/\s+/);
+                var reading_list = [];
+                for (var i = 0; i < marks.length; ++i) {
+                    if (marks[i].parentElement.nodeName != "MARK") {
+                        marks[i].style.backgroundColor = "transparent";
+                        var msg = new SpeechSynthesisUtterance(marks[i].innerText);
+                        msg.rate = 0.78;
+                        //                    msg.rate = 1;
+                        msg.voice = voice;
+                        reading_list.push({
+                            mark: marks[i],
+                            msg: msg
+                        });
+                    }
+                }
+                if (index >= reading_list.length || cancel) {
+                    cancel = false;
+                    return;
+                }
+                var current_read = reading_list[index];
+                current_read.mark.style.backgroundColor = "yellow";
+
+                window.speechSynthesis.speak(current_read.msg);
+
+                current_read.msg.onend = function (e) {
+                    player.play(++index);
+                };
+
+            });
+        }
+
+        function getVoice(cb) {
+            for (var i = 0; i < window.speechSynthesis.getVoices().length; ++i) {
+                var node = window.speechSynthesis.getVoices()[i];
+                if (node.name === document.getElementById("voices").value) {
+                    cb(node);
+                }
+            }
+        }
+    }
+    setSpan(document.getElementById("article"));
+    var player = new Player();
+    getVoice();
+</script>
+
+</html>
