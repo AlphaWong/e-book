@@ -1,0 +1,174 @@
+<html ng-app="todoApp" ng-strict-di ng-cloak>
+
+<head>
+    <title>
+        e-book.html
+    </title>
+    <style>
+        [ng\:cloak],
+        [ng-cloak],
+        [data-ng-cloak],
+        [x-ng-cloak],
+        .ng-cloak,
+        .x-ng-cloak {
+            display: none !important;
+        }
+        
+        mark {
+            background-color: transparent;
+        }
+        
+        mark.speeching {
+            background-color: yellow;
+        }
+    </style>
+</head>
+
+<body ng-controller="speechCtrl as speechCtrl">
+    <article id="article" contenteditable="true">
+        I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation. Five score years ago, a great American, in whose symbolic shadow we stand today, signed the Emancipation Proclamation. This momentous decree came as a great beacon light of hope to millions of Negro slaves who had been seared in the flames of withering injustice. It came as a joyous daybreak to end the long night of their captivity. But one hundred years later, the Negro still is not free. One hundred years later, the life of the Negro is still sadly crippled by the manacles of segregation and the chains of discrimination. One hundred years later, the Negro lives on a lonely island of poverty in the midst of a vast ocean of material prosperity. One hundred years later, the Negro is still languished in the corners of American society and finds himself an exile in his own land. And so we've come here today to dramatize a shameful condition.
+    </article>
+    <button ng-click="speechCtrl.play()">
+        play
+    </button>
+    <button ng-click="speechCtrl.stop()">
+        stop
+    </button>
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.0-rc.0/angular.min.js"></script>
+<script>
+    var app = angular.module('todoApp', []);
+    app.controller("speechCtrl", ["$scope", "$http", speechCtrl]);
+
+    function speechCtrl($scope, $http) {
+        var self = this;
+        self.marks = [];
+
+        self.play = function () {
+            play();
+        };
+
+        self.playing = function (i) {
+            playing(i);
+        };
+
+        function play() {
+            var article = document.getElementById("article");
+            setMarks(article, function (texts) {
+                setDom(article, texts, function () {
+                    setInnerMarks(self, article, function () {
+                        setMarkStyle(self, 0, function () {
+                            getVoice(self.marks[0].innerText, function (msg) {
+                                setSpeech(msg, function () {
+                                    msg.onend = function () {
+                                        self.playing(1);
+                                    }
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        }
+
+        function playing(i) {
+            if (i < self.marks.length) {
+                setMarkStyle(self, i, function () {
+                    getVoice(self.marks[i].innerText, function (msg) {
+                        setSpeech(msg, function () {
+                            msg.onend = function () {
+
+                                self.playing(++i);
+
+                            }
+                        });
+                    });
+                });
+            } else {
+                clearColors();
+                return;
+            }
+        }
+
+        function setMarkStyle(self, i, cb) {
+            clearColors(function () {
+                self.marks[i].className = "speeching";
+                if (angular.isDefined(cb)) {
+                    cb();
+                }
+            })
+        }
+
+        function clearColors(cb) {
+            angular.forEach(self.marks, function (mark, key) {
+                mark.className = "";
+            })
+            if (angular.isDefined(cb)) {
+                cb();
+            }
+        }
+
+        function setMarks(dom, cb) {
+            var texts = dom.innerText;
+            var references = texts.split(/[-!$%^&*()_+|~=`{}\[\]:";'<>?,.\/]/);
+            references = references.filter(function (elem, pos) {
+                return references.indexOf(elem) == pos;
+            });
+            angular.forEach(references, function (reference) {
+                texts = texts.replace((new RegExp(reference, 'ig')), function (str) {
+                    if (str.length > 0) {
+                        return '<mark>' + str + '</mark>'
+                    } else {
+                        return str;
+                    }
+                });
+            })
+            if (angular.isDefined(cb)) {
+                cb(texts);
+            }
+        }
+
+        function setDom(dom, texts, cb) {
+            dom.innerHTML = texts;
+            if (angular.isDefined(cb)) {
+                cb();
+            }
+        }
+
+        function setInnerMarks(self, dom, cb) {
+            var inner_marks = dom.querySelectorAll("mark");
+            angular.forEach(inner_marks, function (mark) {
+                if (mark.parentElement.nodeName != "MARK") {
+                    self.marks.push(mark);
+                }
+            });
+            if (angular.isDefined(cb)) {
+                cb();
+            }
+        }
+
+        function setSpeech(msg, cb) {
+            window.speechSynthesis.speak(msg);
+            if (angular.isDefined(cb)) {
+                cb(msg);
+            }
+        }
+
+        function getVoice(text, cb) {
+            var msg = new SpeechSynthesisUtterance();
+            var voices = window.speechSynthesis.getVoices();
+            //            msg.voice = "default" // Note: some voices don't support altering params
+            //            msg.voiceURI = 'native';
+            //            msg.volume = 1; // 0 to 1
+            msg.rate = 0.75; // 0.1 to 10
+            //            msg.pitch = 0; //0 to 2
+            msg.text = text;
+            msg.lang = 'en-GB';
+            if (angular.isDefined(cb)) {
+                cb(msg);
+            }
+        }
+    }
+</script>
+
+</html>
