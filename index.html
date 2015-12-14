@@ -21,6 +21,13 @@
         mark.speeching {
             background-color: yellow;
         }
+        
+/*
+        mark:hover {
+            text-decoration: underline;
+            cursor: hard;
+        }
+*/
     </style>
 </head>
 
@@ -28,7 +35,10 @@
     <article id="article" contenteditable="true">
         I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation. Five score years ago, a great American, in whose symbolic shadow we stand today, signed the Emancipation Proclamation. This momentous decree came as a great beacon light of hope to millions of Negro slaves who had been seared in the flames of withering injustice. It came as a joyous daybreak to end the long night of their captivity. But one hundred years later, the Negro still is not free. One hundred years later, the life of the Negro is still sadly crippled by the manacles of segregation and the chains of discrimination. One hundred years later, the Negro lives on a lonely island of poverty in the midst of a vast ocean of material prosperity. One hundred years later, the Negro is still languished in the corners of American society and finds himself an exile in his own land. And so we've come here today to dramatize a shameful condition.
     </article>
-    <button ng-click="speechCtrl.play()">
+    <button ng-click="speechCtrl.play()" ng-if="speechCtrl.firstTime">
+        play
+    </button >
+    <button ng-click="speechCtrl.playing(0)" ng-if="!speechCtrl.firstTime">
         play
     </button>
     <button ng-click="speechCtrl.stop()">
@@ -42,26 +52,35 @@
 
     function speechCtrl($scope, $http) {
         var self = this;
+        self.firstTime=true;
         self.marks = [];
+        self.cancel = false;
+        self.i = 0;
 
         self.play = function () {
-            play();
+            self.cancel = false;
+            play(self.i);
         };
 
         self.playing = function (i) {
             playing(i);
         };
+        
+        self.stop=function(){
+            speechSynthesis.cancel();
+            self.cancel=true;
+        };
 
-        function play() {
+        function play(i) {
             var article = document.getElementById("article");
             setMarks(article, function (texts) {
                 setDom(article, texts, function () {
                     setInnerMarks(self, article, function () {
-                        setMarkStyle(self, 0, function () {
-                            getVoice(self.marks[0].innerText, function (msg) {
+                        setMarkStyle(self, i, function () {
+                            getVoice(self.marks[i].innerText, function (msg) {
                                 setSpeech(msg, function () {
                                     msg.onend = function () {
-                                        self.playing(1);
+                                        self.playing(++i);
                                     }
                                 });
                             });
@@ -71,22 +90,27 @@
             });
         }
 
-        function playing(i) {
-            if (i < self.marks.length) {
+        function playing(i, cb) {
+            console.log("1.index:%o;self.cancel:%o", i, self.cancel);
+            if (i < self.marks.length && !self.cancel) {
                 setMarkStyle(self, i, function () {
                     getVoice(self.marks[i].innerText, function (msg) {
                         setSpeech(msg, function () {
                             msg.onend = function () {
-
                                 self.playing(++i);
-
                             }
                         });
                     });
                 });
             } else {
+                self.cancel=!self.cancel;
                 clearColors();
-                return;
+                if (angular.isDefined(cb)) {
+                    cb(i);
+                } else {
+                    return;
+                }
+
             }
         }
 
@@ -140,6 +164,17 @@
             angular.forEach(inner_marks, function (mark) {
                 if (mark.parentElement.nodeName != "MARK") {
                     self.marks.push(mark);
+//                    mark.onclick = function () {
+////                        speechSynthesis.cancel();
+//                        self.cancel = true;
+//                        self.i = self.marks.indexOf(mark);
+//                        playing(self.i, function (i) {
+//                            speechSynthesis.resume();
+//                            console.log("2.index:%o;self.cancel:%o", i, self.cancel);
+//                            self.cancel =! self.cancel;
+//                            self.playing(self.i);
+//                        });
+//                    }
                 }
             });
             if (angular.isDefined(cb)) {
